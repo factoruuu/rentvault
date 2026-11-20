@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RentVault — Rental Deposit Escrow on Tari Ootle</title>
+<style>
+  :root{
+    --ink:#1c1830; --muted:#6b6584; --line:#e4e0f0; --bg:#f6f5fa; --card:#ffffff;
+    --accent:#5b2ee5; --accent-dark:#4520b8; --good:#0e8a4d; --warn:#c77400; --bad:#c22727;
+    --gold:#b8860b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:linear-gradient(120deg,#241245,#3c1a86 60%,#5b2ee5);color:#fff;padding:28px 20px 22px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+  header .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+  .logo{font-size:30px}
+  h1{font-size:26px;margin:0;letter-spacing:.2px}
+  .tagline{margin:4px 0 0;color:#d9d2f7;font-size:14px;max-width:640px}
+  .badge{display:inline-block;background:#ffb020;color:#241245;font-weight:700;font-size:12px;
+    padding:4px 10px;border-radius:999px;letter-spacing:.4px;text-transform:uppercase}
+  .badge.real{background:#2fbf71;color:#fff}
+  section{padding:18px 0 4px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .step b{display:block;font-size:15px;margin-bottom:4px}
+  .step span{color:var(--muted);font-size:13px;line-height:1.45;display:block}
+  .step .n{display:inline-block;background:var(--accent);color:#fff;width:22px;height:22px;border-radius:50%;
+    text-align:center;line-height:22px;font-size:13px;margin-right:8px;vertical-align:-6px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:820px){.grid,.steps{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .card h2{font-size:16px;margin:0 0 10px}
+  .card h3{font-size:13px;margin:14px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--line);font-size:14px}
+  .kv:last-child{border-bottom:none}
+  .kv b{font-variant-numeric:tabular-nums}
+  .flow{display:flex;align-items:center;gap:0;margin:10px 0 4px;flex-wrap:wrap}
+  .node{padding:6px 10px;border-radius:999px;border:1.5px solid var(--line);font-size:12.5px;color:var(--muted);background:#fff}
+  .node.on{border-color:var(--accent);background:var(--accent);color:#fff;font-weight:700}
+  .node.done{border-color:var(--good);color:var(--good)}
+  .arrow{color:var(--muted);padding:0 5px}
+  .roles{display:flex;gap:8px;margin-bottom:10px}
+  .role{flex:1;padding:9px;border-radius:10px;border:1.5px solid var(--line);background:#fff;cursor:pointer;
+    font-size:14px;font-weight:600;color:var(--muted)}
+  .role.sel{border-color:var(--accent);color:var(--accent);background:#f1edfd}
+  .actions{display:grid;gap:8px}
+  button.act{padding:11px 12px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;
+    font-size:14px;font-weight:600;cursor:pointer;text-align:left}
+  button.act:hover{background:var(--accent-dark)}
+  button.act:disabled{background:#e9e6f5;border-color:#e9e6f5;color:#a49ec4;cursor:not-allowed}
+  button.act small{display:block;font-weight:400;font-size:12px;opacity:.85;margin-top:2px}
+  button.ghost{background:#fff;color:var(--accent)}
+  button.ghost:hover{background:#f1edfd}
+  .row{display:flex;gap:8px;align-items:center}
+  input[type=number]{width:110px;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+  .hint{background:#fff8e6;border:1px solid #f0d48a;border-radius:10px;padding:10px 12px;font-size:13.5px;margin-top:12px}
+  .hint b{color:var(--gold)}
+  #log{background:#17122b;color:#d8d3f2;border-radius:12px;padding:14px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:12.5px;line-height:1.65;max-height:300px;overflow:auto;white-space:pre-wrap}
+  #log .ok{color:#5eeaa0} #log .err{color:#ff8f8f} #log .ev{color:#ffd166} #log .dim{color:#8f89ad}
+  .presets{display:flex;gap:8px;flex-wrap:wrap}
+  .preset{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:13px;font-weight:600}
+  .preset:hover{border-color:var(--accent);color:var(--accent)}
+  footer{color:var(--muted);font-size:13px;line-height:1.6;padding:22px 0 40px}
+  footer b{color:var(--ink)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+  .pill.funded{background:#e3f6ec;color:var(--good)} .pill.wait{background:#fdf0dd;color:var(--warn)}
+  .pill.claim{background:#fdeaea;color:var(--bad)} .pill.closed{background:#e8e6f2;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">🔐</div>
+    <div style="flex:1;min-width:260px">
+      <h1>RentVault</h1>
+      <p class="tagline">Rental security deposits, held by code — not by trust. A renter's deposit is locked in an
+      Ootle component and can only leave by rules both sides agreed to up front: mutual release, a claim that
+      survives a dispute window, or an automatic refund if the owner never claims.</p>
+    </div>
+    <div>
+      <span class="badge">Simulation</span>
+      <span class="badge real">Template + engine tests are real</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <div class="steps">
+      <div class="step"><b><span class="n">1</span>Lock</b>
+        <span>The renter deposits the agreed amount into the RentVault component. Neither side can touch it while the rental runs.</span></div>
+      <div class="step"><b><span class="n">2</span>Return or claim</b>
+        <span>Item back in good shape? Both sides confirm and the deposit refunds in full. Damaged? The owner files a claim for up to the deposit.</span></div>
+      <div class="step"><b><span class="n">3</span>Settle</b>
+        <span>A claim only pays out after a dispute window the renter can contest. If the owner never claims, anyone can trigger a full automatic refund. Funds can never get stuck.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="presets">
+      <button class="preset" onclick="preset('happy')">▶ Scenario: smooth return</button>
+      <button class="preset" onclick="preset('damage')">▶ Scenario: damage claim</button>
+      <button class="preset" onclick="preset('dispute')">▶ Scenario: disputed claim</button>
+      <button class="preset" onclick="preset('silent')">▶ Scenario: owner never claims</button>
+      <button class="preset" onclick="resetSim()">↺ Reset</button>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>Agreement</h2>
+      <div class="flow" id="flow"></div>
+      <div id="terms"></div>
+      <h3>Timeline</h3>
+      <div class="kv"><span>Current epoch</span><b id="epochNow">–</b></div>
+      <div class="row" style="margin-top:8px">
+        <button class="act ghost" style="flex:1;text-align:center" onclick="advance(1)">Advance +1 epoch</button>
+        <button class="act ghost" style="flex:1;text-align:center" onclick="advance(5)">Advance +5 epochs</button>
+      </div>
+      <p style="color:var(--muted);font-size:12.5px;margin:10px 0 0">
+        On Ootle, agreements are timed in epochs — the chain's native clock — exactly as the template reads them with <i>Consensus::current_epoch()</i>.</p>
+      <h3>Wallets (tTARI)</h3>
+      <div class="kv"><span>🧑 Renter</span><b id="balRenter">–</b></div>
+      <div class="kv"><span>🏠 Owner</span><b id="balOwner">–</b></div>
+      <div class="kv"><span>🔐 Vault (locked)</span><b id="balVault">–</b></div>
+    </div>
+
+    <div class="card">
+      <h2>Act as</h2>
+      <div class="roles">
+        <button class="role" id="role-renter" onclick="setRole('renter')">🧑 Renter</button>
+        <button class="role" id="role-owner" onclick="setRole('owner')">🏠 Owner</button>
+        <button class="role" id="role-anyone" onclick="setRole('anyone')">👀 Anyone</button>
+      </div>
+      <div class="actions" id="actions"></div>
+      <div class="hint" id="hint"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 style="font-size:16px;margin:6px 0 8px">Event log — what the chain would record</h2>
+    <div id="log"></div>
+  </section>
+
+  <footer>
+    <p><b>What is real:</b> the Rust template in <b>template/</b> compiles to WASM and is exercised by engine tests
+    (<i>tari_template_test_tooling</i>) that run the same Ootle engine as the network — every transition and rejection
+    on this page mirrors a tested code path. <b>What is simulated:</b> this page. It runs the same state machine in
+    JavaScript so you can click through it without a wallet; it is not connected to a network.</p>
+    <p><b>The dispute rule, honestly:</b> if the renter disputes a claim inside the window, the claim is voided and the
+    deposit refunds in full. RentVault is a custody layer, not a court — a contested deduction moves off-chain, where the
+    claim and dispute are both on the public record as evidence. What the chain guarantees is that an owner can never
+    keep a deposit silently, by default, or after the deadline.</p>
+    <p>RentVault · Tari November Build Contest (MVP) · MIT License · Built with an AI agent, as the contest rules allow.</p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* RentVault simulation — mirrors the state machine of template/src/lib.rs exactly:
+   same states, same guards, same rejection messages. */
+
+const START_BALANCE = 1000;
+
+let S;        // agreement state
+let role;     // 'renter' | 'owner' | 'anyone'
+let logEl;
+
+function freshState(p) {
+  return {
+    item: p.item,
+    depositAmount: p.deposit,
+    rentalEndEpoch: p.startEpoch + p.rentalLen,
+    disputeWindow: p.disputeWindow,
+    claimWindow: p.claimWindow,
+    epoch: p.startEpoch,
+    status: "AwaitingDeposit",       // AwaitingDeposit | Funded | ClaimPending | Closed
+    outcome: null,                   // MutualRelease | ClaimPaid | DisputeRefund | AutoRefund
+    vault: 0,
+    claimedAmount: 0,
+    claimEpoch: null,
+    renterConfirmed: false,
+    ownerConfirmed: false,
+    balances: { renter: START_BALANCE, owner: START_BALANCE },
+  };
+}
+
+const DEFAULTS = { item: "Cinema camera kit", deposit: 250, startEpoch: 100, rentalLen: 5, disputeWindow: 3, claimWindow: 4 };
+
+function resetSim() {
+  S = freshState(DEFAULTS);
+  role = "renter";
+  logEl = document.getElementById("log");
+  logEl.innerHTML = "";
+  log("dim", "Agreement created: \"" + S.item + "\", deposit " + S.depositAmount +
+     " tTARI, rental ends at epoch " + S.rentalEndEpoch +
+     ", dispute window " + S.disputeWindow + " epochs, claim window " + S.claimWindow + " epochs.");
+  log("ev", "event AgreementCreated");
+  setHint("The renter locks the deposit first. You are acting as the renter — press <b>Deposit</b>.");
+  render();
+}
+
+function preset(name) {
+  resetSim();
+  if (name === "happy")   setHint("Smooth return: deposit, advance past the rental end if you like, then <b>both</b> sides confirm the return — switch roles to confirm as the owner too.");
+  if (name === "damage")  setHint("Damage claim: deposit, advance to the rental end, switch to the <b>owner</b> and file a claim. Then advance past the dispute window and let anyone execute it.");
+  if (name === "dispute") setHint("Disputed claim: deposit, advance to the rental end, owner files a claim — then switch back to the <b>renter</b> and dispute it inside the window.");
+  if (name === "silent")  setHint("Owner never claims: deposit, then advance past rental end + claim window. Anyone can then trigger the automatic refund.");
+}
+
+/* ---------- rule engine: each function mirrors one template method ---------- */
+
+function fail(msg) { log("err", "✗ rejected: " + msg); render(); }
+function ok(msg)   { log("ok", "✓ " + msg); }
+
+function deposit() {
+  if (role !== "renter") return fail("Only the renter can deposit the agreed amount");
+  if (S.status !== "AwaitingDeposit") return fail("The deposit has already been made");
+  S.balances.renter -= S.depositAmount;
+  S.vault = S.depositAmount;
+  S.status = "Funded";
+  ok("Renter deposited " + S.depositAmount + " tTARI into the vault.");
+  log("ev", "event DepositLocked { amount: " + S.depositAmount + " }");
+  setHint("Deposit locked. The rental is running. Advance epochs to reach the rental end (epoch " + S.rentalEndEpoch + "), or confirm the return early if the item already came back.");
+  render();
+}
+
+function confirmReturn() {
+  if (S.status !== "Funded") return fail("Returns can only be confirmed while the agreement is funded");
+  if (role === "anyone") return fail("Only the renter or the owner can confirm the return");
+  if (role === "renter") {
+    if (S.renterConfirmed) return fail("The renter has already confirmed the return");
+    S.renterConfirmed = true;
+    ok("Renter confirmed the return.");
+  } else {
+    if (S.ownerConfirmed) return fail("The owner has already confirmed the return");
+    S.ownerConfirmed = true;
+    ok("Owner confirmed the return.");
+  }
+  log("ev", "event ReturnConfirmed { by: " + role + " }");
+  if (S.renterConfirmed && S.ownerConfirmed) {
+    S.balances.renter += S.vault;
+    log("ev", "event Settled { outcome: MutualRelease, to_renter: " + S.vault + " }");
+    ok("Both sides confirmed — deposit refunded to the renter in full.");
+    S.vault = 0; S.status = "Closed"; S.outcome = "MutualRelease";
+    setHint("Settled by mutual release. Try another scenario above.");
+  } else {
+    setHint("One confirmation recorded. Switch roles and confirm as the other party to release the deposit.");
+  }
+  render();
+}
+
+function fileClaim() {
+  if (role !== "owner") return fail("Only the owner can file a claim");
+  if (S.status !== "Funded") return fail("Claims can only be filed on a funded agreement");
+  if (S.epoch < S.rentalEndEpoch) return fail("The rental has not ended yet — claims open at epoch " + S.rentalEndEpoch);
+  const amt = parseInt(document.getElementById("claimAmt").value, 10);
+  if (!amt || amt <= 0) return fail("A claim must be for a positive amount");
+  if (amt > S.depositAmount) return fail("A claim cannot exceed the deposit of " + S.depositAmount + " tTARI");
+  S.claimedAmount = amt; S.claimEpoch = S.epoch; S.status = "ClaimPending";
+  ok("Owner filed a claim of " + amt + " tTARI.");
+  log("ev", "event ClaimFiled { amount: " + amt + ", dispute_deadline: " + (S.claimEpoch + S.disputeWindow) + " }");
+  setHint("Claim pending. The renter may dispute until epoch " + (S.claimEpoch + S.disputeWindow) +
+          ". Advance past that epoch and anyone can execute the claim.");
+  render();
+}
+
+function dispute() {
+  if (role !== "renter") return fail("Only the renter can dispute a claim");
+  if (S.status !== "ClaimPending") return fail("There is no pending claim to dispute");
+  if (S.epoch > S.claimEpoch + S.disputeWindow) return fail("The dispute window has closed");
+  S.balances.renter += S.vault;
+  log("ev", "event ClaimDisputed");
+  log("ev", "event Settled { outcome: DisputeRefund, to_renter: " + S.vault + " }");
+  ok("Claim disputed in time — claim voided, deposit refunded to the renter in full.");
+  S.vault = 0; S.status = "Closed"; S.outcome = "DisputeRefund";
+  setHint("Settled by dispute. The claim and the dispute stay on the public record; any further argument happens off-chain.");
+  render();
+}
+
+function executeClaim() {
+  if (S.status !== "ClaimPending") return fail("There is no pending claim to execute");
+  if (S.epoch <= S.claimEpoch + S.disputeWindow) return fail("The dispute window is still open until epoch " + (S.claimEpoch + S.disputeWindow));
+  const toOwner = S.claimedAmount, toRenter = S.vault - S.claimedAmount;
+  S.balances.owner += toOwner; S.balances.renter += toRenter;
+  log("ev", "event Settled { outcome: ClaimPaid, to_owner: " + toOwner + ", to_renter: " + toRenter + " }");
+  ok("Dispute window passed undisputed — owner received " + toOwner + " tTARI, renter refunded the remaining " + toRenter + " tTARI.");
+  S.vault = 0; S.status = "Closed"; S.outcome = "ClaimPaid";
+  setHint("Settled by claim. Try another scenario above.");
+  render();
+}
+
+function autoRefund() {
+  if (S.status !== "Funded") return fail("Auto-refund only applies to a funded agreement with no claim");
+  if (S.epoch <= S.rentalEndEpoch + S.claimWindow) return fail("The owner can still claim until epoch " + (S.rentalEndEpoch + S.claimWindow));
+  S.balances.renter += S.vault;
+  log("ev", "event Settled { outcome: AutoRefund, to_renter: " + S.vault + " }");
+  ok("The owner never claimed — full deposit refunded to the renter.");
+  S.vault = 0; S.status = "Closed"; S.outcome = "AutoRefund";
+  setHint("Settled by automatic refund. Nobody had to chase anybody — the deadline did the work.");
+  render();
+}
+
+function advance(n) {
+  S.epoch += n;
+  log("dim", "… epoch advances to " + S.epoch);
+  render();
+}
+
+/* ---------- rendering ---------- */
+
+function setRole(r) { role = r; render(); }
+function setHint(html) { document.getElementById("hint").innerHTML = "💡 " + html; }
+function log(cls, msg) {
+  const d = document.createElement("div");
+  d.className = cls; d.textContent = "[epoch " + (S ? S.epoch : 0) + "] " + msg;
+  logEl.appendChild(d); logEl.scrollTop = logEl.scrollHeight;
+}
+
+function statusPill() {
+  if (S.status === "AwaitingDeposit") return '<span class="pill wait">Awaiting deposit</span>';
+  if (S.status === "Funded") return '<span class="pill funded">Funded — locked</span>';
+  if (S.status === "ClaimPending") return '<span class="pill claim">Claim pending</span>';
+  return '<span class="pill closed">Closed — ' + S.outcome + '</span>';
+}
+
+function render() {
+  ["renter", "owner", "anyone"].forEach(r =>
+    document.getElementById("role-" + r).classList.toggle("sel", role === r));
+
+  const stages = ["AwaitingDeposit", "Funded", "ClaimPending", "Closed"];
+  const labels = { AwaitingDeposit: "Created", Funded: "Funded", ClaimPending: "Claim pending", Closed: "Settled" };
+  const idx = stages.indexOf(S.status);
+  document.getElementById("flow").innerHTML = stages.map((s, i) =>
+    (i ? '<span class="arrow">→</span>' : "") +
+    '<span class="node' + (i === idx ? " on" : i < idx ? " done" : "") + '">' + labels[s] + "</span>"
+  ).join("");
+
+  document.getElementById("terms").innerHTML =
+    '<div class="kv"><span>Item</span><b>' + S.item + "</b></div>" +
+    '<div class="kv"><span>Status</span>' + statusPill() + "</div>" +
+    '<div class="kv"><span>Agreed deposit</span><b>' + S.depositAmount + " tTARI</b></div>" +
+    '<div class="kv"><span>Rental ends</span><b>epoch ' + S.rentalEndEpoch + "</b></div>" +
+    '<div class="kv"><span>Dispute window</span><b>' + S.disputeWindow + " epochs after a claim</b></div>" +
+    '<div class="kv"><span>Claim window</span><b>' + S.claimWindow + " epochs after rental end</b></div>" +
+    (S.status === "ClaimPending"
+      ? '<div class="kv"><span>Claim</span><b>' + S.claimedAmount + " tTARI · disputable until epoch " + (S.claimEpoch + S.disputeWindow) + "</b></div>" : "") +
+    '<div class="kv"><span>Return confirmed</span><b>renter ' + (S.renterConfirmed ? "✓" : "—") + " · owner " + (S.ownerConfirmed ? "✓" : "—") + "</b></div>";
+
+  document.getElementById("epochNow").textContent = S.epoch;
+  document.getElementById("balRenter").textContent = S.balances.renter + " tTARI";
+  document.getElementById("balOwner").textContent = S.balances.owner + " tTARI";
+  document.getElementById("balVault").textContent = S.vault + " tTARI";
+
+  const a = [];
+  if (S.status === "AwaitingDeposit")
+    a.push('<button class="act" onclick="deposit()">Deposit ' + S.depositAmount + ' tTARI<small>Renter only · locks the deposit in the vault</small></button>');
+  if (S.status === "Funded") {
+    a.push('<button class="act" onclick="confirmReturn()">Confirm return in good condition<small>Renter and owner each confirm · both confirmations refund the renter in full</small></button>');
+    a.push('<div class="row"><input type="number" id="claimAmt" value="80" min="1" max="' + S.depositAmount + '">' +
+           '<button class="act" style="flex:1" onclick="fileClaim()">File damage claim<small>Owner only · opens at epoch ' + S.rentalEndEpoch + ' · up to the deposit</small></button></div>');
+    a.push('<button class="act ghost" onclick="autoRefund()">Trigger automatic refund<small>Anyone · once the owner\'s claim window (epoch ' + (S.rentalEndEpoch + S.claimWindow) + ') has passed unclaimed</small></button>');
+  }
+  if (S.status === "ClaimPending") {
+    a.push('<button class="act" onclick="dispute()">Dispute this claim<small>Renter only · until epoch ' + (S.claimEpoch + S.disputeWindow) + ' · voids the claim and refunds in full</small></button>');
+    a.push('<button class="act ghost" onclick="executeClaim()">Execute claim<small>Anyone · after the dispute window closes · owner gets the claim, renter the rest</small></button>');
+  }
+  if (S.status === "Closed")
+    a.push('<button class="act" onclick="resetSim()">Start a new agreement<small>This one is settled — the vault is empty and the record is final</small></button>');
+  document.getElementById("actions").innerHTML = a.join("");
+}
+
+resetSim();
+</script>
+</body>
+</html>
